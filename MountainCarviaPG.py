@@ -101,8 +101,8 @@ for i in range(episode_number):
     loss = 0
     for t in range(step):
         loss = loss - saved_log_probs[t] * reward_pool[t]
-
     loss.backward()
+    
     optimizer.step()
     state_pool = []
     action_pool = []
