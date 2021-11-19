@@ -36,8 +36,8 @@ def select_action(state):
     saved_log_probs.append(m.log_prob(action))
     return action.item()
 
-print(select_action(np.array([1,1,1,1])))
-print(saved_log_probs)
+# print(select_action(np.array([1,1,1,1])))
+# print(saved_log_probs)
 
 
 # def select_action(self, state):
@@ -48,9 +48,11 @@ print(saved_log_probs)
 #     entropy = - (probs*probs.log()).sum()
 #     return action[0], log_prob, entropy
 
-plt.title('Training...')
-plt.xlabel('Episode')
-plt.ylabel('Reward')
-plt.plot(1,2,'-r')
-plt.plot(2,4,'-r')
-plt.show()
+
+x = np.array([0.4,0.6]).astype(np.float32)
+x = torch.from_numpy(x)
+
+neg_log_prob = F.cross_entropy(input=torch.tensor([[0.4,0.6]]), target=torch.LongTensor([1]), reduction='none')
+n1 = torch.softmax(x,dim=0)
+print(n1)
+print(neg_log_prob)
