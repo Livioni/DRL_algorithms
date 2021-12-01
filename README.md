@@ -1,4 +1,4 @@
-## my_Monutain_Car_via_Policiy_Gradient
+## my_CartPole_Policiy_Gradient
 
 策略梯度是强化学习的一类方法，大致的原理是使用神经网络构造一个策略网络，输入是状态，输出为动作的概率，在这些动作里采样选择一个动作去与环境交互，这样可以起到**Exploration 和 Exploitation的tradeoff**。与环境交互后获得一个收益，根据设计的损失函数和收益使用梯度上升法更新网络参数。输出的直接是策略$\pi(a|s)$，以概率的形式呈现，且$\sum_{a} \pi(a \mid s)=1$。
 
@@ -152,4 +152,10 @@ PyTorch提供了求交叉熵的两个常用函数，一个是`F.cross_entropy()`
 
    ``softmax_input = policy.forward(torch.FloatTensor(state_pool))
    neg_log_prob = F.cross_entropy(input=softmax_input, target=torch.LongTensor(action_pool), reduction='none')``
+
+### 带基线的Policy Gradient算法
+
+使用另外一个神经网络近似期望回报值，当回报超过基线值时，该动作的概率提高，反之降低
+
+
 

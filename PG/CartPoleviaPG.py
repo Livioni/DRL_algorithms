@@ -13,7 +13,7 @@ writer = SummaryWriter(comment='Cartpole Reward Record')
 
 #用策略梯度方法解决mountain_car问题
 env = gym.make('CartPole-v0')
-learning_rate = 0.01          #学习率
+learning_rate = 0.005          #学习率
 discount_factor = 0.9       #折扣值
 episode_number = 1000            #幕数
 state_pool = []               #状态列表
@@ -38,7 +38,22 @@ class PolicyNet(nn.Module):
         x = F.sigmoid(self.fc3(x))
         return x
 
-policy = PolicyNet()
+#这个网络很优秀
+class Policy(nn.Module):
+    def __init__(self):
+        super(Policy, self).__init__()
+        self.affine1 = nn.Linear(4, 128)
+        self.dropout = nn.Dropout(p=0.6)
+        self.affine2 = nn.Linear(128, 2)
+
+    def forward(self, x):
+        x = self.affine1(x)
+        x = self.dropout(x)
+        x = F.relu(x)
+        x = self.affine2(x)
+        return x
+
+policy = Policy()
 optimizer = torch.optim.Adam(policy.parameters(),lr=learning_rate)
 
 

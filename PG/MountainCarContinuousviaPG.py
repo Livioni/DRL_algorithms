@@ -10,7 +10,7 @@ import gym
 import matplotlib.pyplot as plt
 
 #用策略梯度方法解决mountain_car问题
-env = gym.make('MountainCar-v0')
+env = gym.make('MountainCarContinous-v0')
 learning_rate = 0.001          #学习率
 discount_factor = 0.99        #折扣值
 episode_number = 1000            #幕数
@@ -34,9 +34,6 @@ class PolicyNet(nn.Module):
         x = self.fc2(x)
         return x
         
-        
-
-
 policy = PolicyNet()
 optimizer = torch.optim.Adam(policy.parameters(),lr=learning_rate)
 

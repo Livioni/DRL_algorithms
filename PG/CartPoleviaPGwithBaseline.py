@@ -1,18 +1,23 @@
+from typing import Counter
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules import loss
 import torch.optim as optim
 from torch.distributions import Categorical
 from torch.autograd import Variable
-from itertools import count
 import gym
+from itertools import count
 import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter(comment='Cartpole Reward Record')
 
 #用策略梯度方法解决mountain_car问题
-env = gym.make('MountainCar-v0')
-learning_rate = 0.001          #学习率
-discount_factor = 0.99        #折扣值
+env = gym.make('CartPole-v0')
+learning_rate1 = 0.001          #学习率
+learning_rate2 = 0.01
+discount_factor = 0.9       #折扣值
 episode_number = 1000            #幕数
 state_pool = []               #状态列表
 action_pool = []              #动作列表
@@ -20,26 +25,55 @@ reward_pool = []              #收益列表
 step = 0                      #步骤数
 sum_reward = 0                #plot收益需要
 episode_durations = []        #cartpole里面的持续状态数
+value_loss = nn.MSELoss()
 
-#定义策略网络
+#定义期望回报网络
 class PolicyNet(nn.Module):
     def __init__(self):
         super(PolicyNet, self).__init__()
 
-        self.fc1 = nn.Linear(2, 20) #2个状态输入，小车的速度和位置
-        self.fc2 = nn.Linear(20, 3) #输出为3个动作 
+        self.fc1 = nn.Linear(4, 36)
+        self.dropout = nn.Dropout(p=0.6)
+        self.fc3 = nn.Linear(36, 1)  # 当前状态的价值
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.dropout(x))
+        x = F.relu(self.fc3(x))
         return x
-        
-        
 
+#这个网络很优秀
+class Policy(nn.Module):
+    def __init__(self):
+        super(Policy, self).__init__()
+        self.affine1 = nn.Linear(4, 128)
+        self.dropout = nn.Dropout(p=0.6)
+        self.affine2 = nn.Linear(128, 2)
 
-policy = PolicyNet()
-optimizer = torch.optim.Adam(policy.parameters(),lr=learning_rate)
+    def forward(self, x):
+        x = self.affine1(x)
+        x = self.dropout(x)
+        x = F.relu(x)
+        x = self.affine2(x)
+        return x
 
+policy = Policy()
+value_prediction = PolicyNet()
+optimizer = torch.optim.Adam(policy.parameters(),lr=learning_rate1)
+value_optimizer = torch.optim.Adam(value_prediction.parameters(),lr=learning_rate2)
+
+def value_estimator(state,network):
+    state = torch.from_numpy(state).float()
+    predicted_value = network(state)#从策略网络中输出动作概率
+    return predicted_value
+
+def update_network(true_value,state,network):
+    predicted_value =  value_estimator(state,network)
+    true_value = true_value * torch.ones(1,1)
+    loss1 = -value_loss(predicted_value,true_value)
+    value_optimizer.zero_grad()
+    loss1.backward()
+    value_optimizer.step()
 
 #定义一个动作选择方法:输入一个动作输出动作的概率并采样一个动作
 def action_select(state,network):
@@ -51,7 +85,7 @@ def action_select(state,network):
     return action.item()
 
 def plot_durations():
-    plt.figure(3)
+    plt.figure(2)
     plt.clf()
     durations_t = torch.FloatTensor(episode_durations)
     plt.title('Training...')
@@ -104,13 +138,16 @@ for i in range(episode_number):
     for t in count():
         action = action_select(state,policy) 
         next_state,reward,done,_ = env.step(action)
+        true_reward = reward
+        reward -= value_estimator(state,value_prediction).item()
+        update_network(true_reward,state,value_prediction)
         add_to_pool(state,action,reward)
         env.render(mode='rgb_array')
         state = next_state
         sum_reward += reward
         step += 1
         if done:
-            episode_durations.append(sum_reward)
+            episode_durations.append(t + 1)
             plot_durations()
             learning()
             break
@@ -121,10 +158,15 @@ for i in range(episode_number):
     step = 0
     sum_reward = 0
 
+#绘制曲线
+for data in range(episode_number):
+    writer.add_scalar('Reward',episode_durations[data],data)   
+
+writer.close()
 #保存策略网络训练参数
-torch.save(policy, 'Mountain_net.pth')
+torch.save(policy, 'Cartpole_net.pth')
 #加载网络
-trained_network = torch.load('Mountain_net.pth')
+trained_network = torch.load('Cartpole_net.pth')
 #evaluation 1 episode
 state = env.reset()#初始状态：数组形式
 env.render(mode='rgb_array')#显示画面
@@ -134,13 +176,8 @@ for t in count():
     env.render(mode='rgb_array')
     state = next_state
     sum_reward += reward
-    if done:    
-        plt.figure(3)
-        plt.title('Training...')
-        plt.xlabel('Episode')
-        plt.ylabel('Reward')
-        plt.plot(t,sum_reward,'or')
-        plt.show()
+    if done:
+        print("The final reward is ",sum_reward)
         break
 
 env.close()
