@@ -13,7 +13,7 @@ writer = SummaryWriter(comment='Cartpole Reward Record')
 
 #用策略梯度方法解决mountain_car问题
 env = gym.make('CartPole-v0')
-learning_rate = 0.005          #学习率
+learning_rate = 0.001          #学习率
 discount_factor = 0.9       #折扣值
 episode_number = 1000            #幕数
 state_pool = []               #状态列表

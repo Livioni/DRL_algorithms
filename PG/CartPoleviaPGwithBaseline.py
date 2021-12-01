@@ -70,7 +70,7 @@ def value_estimator(state,network):
 def update_network(true_value,state,network):
     predicted_value =  value_estimator(state,network)
     true_value = true_value * torch.ones(1,1)
-    loss1 = -value_loss(predicted_value,true_value)
+    loss1 = value_loss(predicted_value,true_value)
     value_optimizer.zero_grad()
     loss1.backward()
     value_optimizer.step()
@@ -112,7 +112,9 @@ def learning():
     running_add = 0
     for t in reversed(range(step)):#反向计算每一次的期望收益，用采样值代替
         running_add = running_add * discount_factor + reward_pool[t]
-        reward_pool[t] = running_add
+        update_network(running_add,state_pool[-t],value_prediction)
+        reward_pool[t] = running_add - value_estimator(state_pool[-t],value_prediction).item()
+
 
     # Normalize reward 标准化收益
     reward_mean = np.mean(reward_pool)
@@ -138,9 +140,6 @@ for i in range(episode_number):
     for t in count():
         action = action_select(state,policy) 
         next_state,reward,done,_ = env.step(action)
-        true_reward = reward
-        reward -= value_estimator(state,value_prediction).item()
-        update_network(true_reward,state,value_prediction)
         add_to_pool(state,action,reward)
         env.render(mode='rgb_array')
         state = next_state

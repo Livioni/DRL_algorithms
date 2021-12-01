@@ -157,5 +157,18 @@ PyTorch提供了求交叉熵的两个常用函数，一个是`F.cross_entropy()`
 
 使用另外一个神经网络近似期望回报值，当回报超过基线值时，该动作的概率提高，反之降低
 
+训练效果
+
+![CartPoleviaPGwithBaseline](/Users/livion/Documents/GitHub/DRL_algorithms/figures/CartPoleviaPGwithBaseline.png)
+
+不带基线的效果
+
+![CartpoleviaPGwithoutBaseline](/Users/livion/Documents/GitHub/DRL_algorithms/README.assets/CartpoleviaPGwithoutBaseline.png)
+
+两种方法对比
+
+![对比](/Users/livion/Documents/GitHub/DRL_algorithms/README.assets/对比.png)
 
 
+
+红色是baseline，橘色是withoutbaseline 好像也差不多嘛
