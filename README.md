@@ -159,15 +159,17 @@ PyTorch提供了求交叉熵的两个常用函数，一个是`F.cross_entropy()`
 
 训练效果
 
-![CartPoleviaPGwithBaseline](/Users/livion/Documents/GitHub/DRL_algorithms/figures/CartPoleviaPGwithBaseline.png)
+![](https://raw.githubusercontent.com/Livioni/DRL_algorithm/main/figures/CartPoleviaPGwithBaseline.png)
 
 不带基线的效果
 
-![CartpoleviaPGwithoutBaseline](/Users/livion/Documents/GitHub/DRL_algorithms/README.assets/CartpoleviaPGwithoutBaseline.png)
+![](https://raw.githubusercontent.com/Livioni/DRL_algorithm/main/figures/CartpoleviaPGwithoutBaseline.png)
 
 两种方法对比
 
-![对比](/Users/livion/Documents/GitHub/DRL_algorithms/README.assets/对比.png)
+![](https://raw.githubusercontent.com/Livioni/DRL_algorithm/main/figures/%E5%AF%B9%E6%AF%94.png)
+
+
 
 
 
