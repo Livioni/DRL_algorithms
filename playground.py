@@ -49,10 +49,5 @@ def select_action(state):
 #     return action[0], log_prob, entropy
 
 
-x = np.array([0.4,0.6]).astype(np.float32)
-x = torch.from_numpy(x)
-
-neg_log_prob = F.cross_entropy(input=torch.tensor([[0.4,0.6]]), target=torch.LongTensor([1]), reduction='none')
-n1 = torch.softmax(x,dim=0)
-print(n1)
-print(neg_log_prob)
+a = torch.randn(1, 3)
+print(a.mean())

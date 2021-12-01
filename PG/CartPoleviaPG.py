@@ -116,18 +116,18 @@ def learning():
 
 for i in range(episode_number):
     state = env.reset()#初始状态：数组形式
-    env.render(mode='rgb_array')#显示画面
+    # env.render(mode='rgb_array')#显示画面
     for t in count():
         action = action_select(state,policy) 
         next_state,reward,done,_ = env.step(action)
         add_to_pool(state,action,reward)
-        env.render(mode='rgb_array')
+        # env.render(mode='rgb_array')
         state = next_state
         sum_reward += reward
         step += 1
         if done:
             episode_durations.append(t + 1)
-            plot_durations()
+            # plot_durations()
             learning()
             break
 

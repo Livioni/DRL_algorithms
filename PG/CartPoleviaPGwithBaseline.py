@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter(comment='Cartpole Reward Record')
 
-#用策略梯度方法解决mountain_car问题
+#用策略梯度方法解决cartpole问题
 env = gym.make('CartPole-v0')
 learning_rate1 = 0.001          #学习率
 learning_rate2 = 0.01
@@ -70,7 +70,8 @@ def value_estimator(state,network):
 def update_network(true_value,state,network):
     predicted_value =  value_estimator(state,network)
     true_value = true_value * torch.ones(1,1)
-    loss1 = value_loss(predicted_value,true_value)
+    # loss1 = -value_loss(predicted_value,true_value)
+    loss1 = -(true_value-predicted_value).pow(2).mean()#一样的
     value_optimizer.zero_grad()
     loss1.backward()
     value_optimizer.step()
@@ -136,18 +137,18 @@ def learning():
 
 for i in range(episode_number):
     state = env.reset()#初始状态：数组形式
-    env.render(mode='rgb_array')#显示画面
+    # env.render(mode='rgb_array')#显示画面
     for t in count():
         action = action_select(state,policy) 
         next_state,reward,done,_ = env.step(action)
         add_to_pool(state,action,reward)
-        env.render(mode='rgb_array')
+        # env.render(mode='rgb_array')
         state = next_state
         sum_reward += reward
         step += 1
         if done:
             episode_durations.append(t + 1)
-            plot_durations()
+            # plot_durations()
             learning()
             break
 
