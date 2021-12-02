@@ -15,7 +15,7 @@ state_size = env.observation_space.shape[0] #4
 action_size = env.action_space.n #2
 lr = 0.001 #学习率 
 episode_number=1000
-episode_durations = []        #cartpole里面的持续状态数
+sum_reward_pool = []        #cartpole里面的持续状态数
 
 class Actor(nn.Module): #策略网络
     def __init__(self, state_size, action_size):
@@ -69,7 +69,7 @@ def trainIters(actor, critic, n_iters):
         rewards = []
         masks = []
         env.reset()
-
+        sum_reward = 0
         for i in count():
             # env.render()
             state = torch.FloatTensor(state).to(device)
@@ -84,12 +84,12 @@ def trainIters(actor, critic, n_iters):
             values.append(value)
             rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
             masks.append(torch.tensor([1-done], dtype=torch.float, device=device))
-
+            sum_reward += reward
             state = next_state
 
             if done:
-                episode_durations.append(i + 1)
-                print('Iteration: {}, Score: {}'.format(iter, i + 1))
+                sum_reward_pool.append(sum_reward)
+                print('Iteration: {}, Score: {}'.format(iter, sum_reward))
                 break
 
 
@@ -112,8 +112,8 @@ def trainIters(actor, critic, n_iters):
         critic_loss.backward()
         optimizerA.step()
         optimizerC.step()
-    # torch.save(actor, 'actor.pkl')
-    # torch.save(critic, 'critic.pkl')
+    torch.save(actor, 'actor.pkl')
+    torch.save(critic, 'critic.pkl')
     env.close()
 
 
@@ -132,6 +132,6 @@ if __name__ == '__main__':
     trainIters(actor, critic, n_iters=1000)
 
 #绘制曲线
-# for data in range(episode_number):
-#     writer.add_scalar('Reward',episode_durations[data],data)   
-# writer.close()
+for data in range(episode_number):
+    writer.add_scalar('Reward',sum_reward_pool[data],data)   
+writer.close()
