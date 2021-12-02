@@ -1,6 +1,7 @@
 import gym, os
 from itertools import count
 import torch
+from torch.functional import _return_counts
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -50,15 +51,6 @@ class Critic(nn.Module): #状态值函数网络
         return value #输出状态值函数
 
 
-def compute_returns(next_value, rewards, masks, gamma=0.99):#计算回报
-    R = next_value
-    returns = []
-    for step in reversed(range(len(rewards))):#还是REINFORCE方法
-        R = rewards[step] + gamma * R * masks[step] #gamma是折扣率
-        returns.insert(0, R)#这里masks是为了让最后一步收益为0
-    return returns
-
-
 def trainIters(actor, critic, n_iters):
     optimizerA = optim.Adam(actor.parameters(),lr)
     optimizerC = optim.Adam(critic.parameters(),lr)
@@ -68,6 +60,7 @@ def trainIters(actor, critic, n_iters):
         values = []
         rewards = []
         masks = []
+        returns = []
         env.reset()
 
         for i in count():
@@ -77,13 +70,16 @@ def trainIters(actor, critic, n_iters):
 
             action = dist.sample()#采样当前动作 
             next_state, reward, done, _ = env.step(action.cpu().numpy())
-
+            next_state = torch.FloatTensor(next_state)
             log_prob = dist.log_prob(action).unsqueeze(0)
 
             log_probs.append(log_prob)
             values.append(value)
             rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
             masks.append(torch.tensor([1-done], dtype=torch.float, device=device))
+            R = reward + 0.99 * critic(next_state) * (1-done) #gamma是折扣率
+            returns.append(R)#这里masks是为了让最后一步收益为0
+
 
             state = next_state
 
@@ -94,8 +90,6 @@ def trainIters(actor, critic, n_iters):
 
 
         next_state = torch.FloatTensor(next_state).to(device)
-        next_value = critic(next_state)
-        returns = compute_returns(next_value, rewards, masks)
 
         log_probs = torch.cat(log_probs)
         returns = torch.cat(returns).detach()
@@ -112,8 +106,8 @@ def trainIters(actor, critic, n_iters):
         critic_loss.backward()
         optimizerA.step()
         optimizerC.step()
-    # torch.save(actor, 'actor.pkl')
-    # torch.save(critic, 'critic.pkl')
+    torch.save(actor, 'actor.pkl')
+    torch.save(critic, 'critic.pkl')
     env.close()
 
 

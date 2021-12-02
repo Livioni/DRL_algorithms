@@ -127,6 +127,7 @@ for i in range(episode_number):
         step += 1
         if done:
             episode_durations.append(t + 1)
+            print('Iteration: {}, Score: {}'.format(i, t + 1))
             # plot_durations()
             learning()
             break
