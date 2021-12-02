@@ -1,7 +1,6 @@
 import gym, os
 from itertools import count
 import torch
-from torch.functional import _return_counts
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -10,13 +9,13 @@ from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter(comment='Cartpole Reward Record')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-env = gym.make("CartPole-v0")
+env = gym.make("MountainCar-v0")
 
 state_size = env.observation_space.shape[0] #4
 action_size = env.action_space.n #2
 lr = 0.001 #学习率 
 episode_number=1000
-episode_durations = []        #cartpole里面的持续状态数
+sum_reward_pool = []
 
 class Actor(nn.Module): #策略网络
     def __init__(self, state_size, action_size):
@@ -51,6 +50,15 @@ class Critic(nn.Module): #状态值函数网络
         return value #输出状态值函数
 
 
+def compute_returns(next_value, rewards, masks, gamma=0.99):#计算回报
+    R = next_value
+    returns = []
+    for step in reversed(range(len(rewards))):#还是REINFORCE方法
+        R = rewards[step] + gamma * R * masks[step] #gamma是折扣率
+        returns.insert(0, R)#这里masks是为了让最后一步收益为0
+    return returns
+
+
 def trainIters(actor, critic, n_iters):
     optimizerA = optim.Adam(actor.parameters(),lr)
     optimizerC = optim.Adam(critic.parameters(),lr)
@@ -60,41 +68,40 @@ def trainIters(actor, critic, n_iters):
         values = []
         rewards = []
         masks = []
-        returns = []
+        sum_reward_pool = []
+        sum_reward = 0
         env.reset()
 
         for i in count():
-            # env.render()
+            env.render()
             state = torch.FloatTensor(state).to(device)
             dist, value = actor(state), critic(state) #dist得出动作概率分布，value得出当前动作价值函数
 
             action = dist.sample()#采样当前动作 
             next_state, reward, done, _ = env.step(action.cpu().numpy())
-            next_state = torch.FloatTensor(next_state)
+
             log_prob = dist.log_prob(action).unsqueeze(0)
 
             log_probs.append(log_prob)
             values.append(value)
             rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
             masks.append(torch.tensor([1-done], dtype=torch.float, device=device))
-            R = reward + 0.99 * critic(next_state) * (1-done) #gamma是折扣率
-            returns.append(R)#这里masks是为了让最后一步收益为0
-
 
             state = next_state
-
+            sum_reward += reward
             if done:
-                episode_durations.append(i + 1)
-                print('Iteration: {}, Score: {}'.format(iter, i + 1))
+                sum_reward_pool.append(sum_reward)
+                print('Iteration: {}, Score: {}'.format(iter, sum_reward))
                 break
 
 
         next_state = torch.FloatTensor(next_state).to(device)
+        next_value = critic(next_state)
+        returns = compute_returns(next_value, rewards, masks)
 
         log_probs = torch.cat(log_probs)
         returns = torch.cat(returns).detach()
         values = torch.cat(values)
-        value[-1] = 0
 
         advantage = returns - values
 
@@ -128,5 +135,5 @@ if __name__ == '__main__':
 
 #绘制曲线
 for data in range(episode_number):
-    writer.add_scalar('Reward',episode_durations[data],data)   
+    writer.add_scalar('Reward',sum_reward_pool[data],data)   
 writer.close()
