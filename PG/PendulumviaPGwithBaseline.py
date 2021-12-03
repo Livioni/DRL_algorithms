@@ -13,8 +13,8 @@ import gym
 from itertools import count
 import matplotlib.pyplot as plt
 from torch.distributions import normal
-# from torch.utils.tensorboard import SummaryWriter
-# writer = SummaryWriter(comment='Cartpole Reward Record')
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter(comment='Cartpole Reward Record')
 
 #用策略梯度方法解决cartpole问题
 env = gym.make('Pendulum-v1')
@@ -86,7 +86,7 @@ def action_select(state,network):
     state = torch.from_numpy(state).float()
     mu,sigma = network(state)#从策略网络中输出动作概率
     m = normal.Normal(mu,sigma)
-    action = torch.clamp(m.sample(),-2,2)#采样一个动作
+    action = m.sample()#采样一个动作
     return action,m
 
 def plot_durations():
@@ -118,8 +118,8 @@ def learning():
     running_add = 0
     for t in reversed(range(step)):#反向计算每一次的期望收益，用采样值代替
         running_add = running_add * discount_factor + reward_pool[t]
-        update_network(running_add,state_pool[-t],value_prediction)
-        reward_pool[t] = running_add - value_estimator(state_pool[-t],value_prediction).item()
+        update_network(running_add,state_pool[t],value_prediction)
+        reward_pool[t] = running_add - value_estimator(state_pool[t],value_prediction).item()
 
 
     # Normalize reward 标准化收益
@@ -130,8 +130,8 @@ def learning():
     
     optimizer.zero_grad()
     # Step 2: 前向传播
-    reward_pool = torch.FloatTensor(reward_pool)
-    neg_log_prob = torch.FloatTensor(neg_log_prob)
+    reward_pool = Variable(torch.FloatTensor(reward_pool),requires_grad = True)
+    neg_log_prob = Variable(torch.FloatTensor(neg_log_prob),requires_grad = True)
     # Step 3: 反向传播
     loss = torch.mean(neg_log_prob * reward_pool)
     loss.backward()
@@ -165,10 +165,10 @@ for i in range(episode_number):
     neg_log_prob = []
 
 #绘制曲线
-# for data in range(episode_number):
-#     writer.add_scalar('Reward',episode_durations[data],data)   
+for data in range(episode_number):
+    writer.add_scalar('Reward',episode_durations[data],data)   
 
-# writer.close()
+writer.close()
 #保存策略网络训练参数
 torch.save(policy, 'Pendulum_net.pth')
 #加载网络
@@ -177,8 +177,8 @@ trained_network = torch.load('pendulum_net.pth')
 state = env.reset()#初始状态：数组形式
 env.render(mode='rgb_array')#显示画面
 for t in count():
-    action = action_select(state,trained_network) 
-    next_state,reward,done,_ = env.step(action)
+    action,_ = action_select(state,trained_network) 
+    next_state,reward,done,_ = env.step([action.item()])
     env.render(mode='rgb_array')
     state = next_state
     sum_reward += reward
