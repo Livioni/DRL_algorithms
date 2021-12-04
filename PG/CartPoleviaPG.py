@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import torch,os
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -54,6 +54,11 @@ class Policy(nn.Module):
         return x
 
 policy = Policy()
+
+if os.path.exists('models/CartPole_PG.pkl'):
+    policy = torch.load('models/CartPole_PG.pkl')
+    print("Network loaded.")
+
 optimizer = torch.optim.Adam(policy.parameters(),lr=learning_rate)
 
 
@@ -144,20 +149,21 @@ for data in range(episode_number):
 
 writer.close()
 #保存策略网络训练参数
-torch.save(policy, 'Cartpole_net.pth')
+torch.save(policy, 'models/CartPole_PG.pkl')
 #加载网络
-trained_network = torch.load('Cartpole_net.pth')
-#evaluation 1 episode
-state = env.reset()#初始状态：数组形式
-env.render(mode='rgb_array')#显示画面
-for t in count():
-    action = action_select(state,trained_network) 
-    next_state,reward,done,_ = env.step(action)
-    env.render(mode='rgb_array')
-    state = next_state
-    sum_reward += reward
-    if done:
-        print("The final reward is ",sum_reward)
-        break
+if os.path.exists('models/CartPole_PG.pkl'):
+    trained_network = torch.load('models/CartPole_PG.pkl')
+    #evaluation 1 episode
+    state = env.reset()#初始状态：数组形式
+    env.render(mode='rgb_array')#显示画面
+    for t in count():
+        action = action_select(state,trained_network) 
+        next_state,reward,done,_ = env.step(action)
+        env.render(mode='rgb_array')
+        state = next_state
+        sum_reward += reward
+        if done:
+            print("The final reward is ",sum_reward)
+            break
 
 env.close()

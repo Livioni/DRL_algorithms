@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter(comment='Cartpole Reward Record')
+# from torch.utils.tensorboard import SummaryWriter
+# writer = SummaryWriter(comment='Cartpole Reward Record')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make("CartPole-v0")
@@ -112,26 +112,26 @@ def trainIters(actor, critic, n_iters):
         critic_loss.backward()
         optimizerA.step()
         optimizerC.step()
-    # torch.save(actor, 'actor.pkl')
-    # torch.save(critic, 'critic.pkl')
+    torch.save(actor, 'models/CarPole_actor.pkl')
+    torch.save(critic, 'models/CarPole_critic.pkl')
     env.close()
 
 
 
 if __name__ == '__main__':
-    if os.path.exists('actor.pkl'):
-        actor = torch.load('actor.pkl')
+    if os.path.exists('models/CarPole_actor.pkl'):
+        actor = torch.load('models/CarPole_actor.pkl')
         print('Actor Model loaded')
     else:
         actor = Actor(state_size, action_size).to(device)
-    if os.path.exists('critic.pkl'):
-        critic = torch.load('critic.pkl')
+    if os.path.exists('models/CarPole_critic.pkl'):
+        critic = torch.load('models/CarPole_critic.pkl')
         print('Critic Model loaded')
     else:
         critic = Critic(state_size, action_size).to(device)
     trainIters(actor, critic, n_iters=1000)
 
 #绘制曲线
-for data in range(episode_number):
-    writer.add_scalar('Reward',episode_durations[data],data)   
-writer.close()
+# for data in range(episode_number):
+#     writer.add_scalar('Reward',episode_durations[data],data)   
+# writer.close()

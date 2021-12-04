@@ -1,6 +1,6 @@
 from typing import Counter
 import numpy as np
-import torch
+import torch,os
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules import loss
@@ -59,6 +59,12 @@ class Policy(nn.Module):
 
 policy = Policy()
 value_prediction = PolicyNet()
+
+if os.path.exists('models/CartPole_PG_Baseline.pkl'):
+    policy = torch.load('models/CartPole_PG_Baseline.pkl')
+    print("Policy Network loaded.")
+
+
 optimizer = torch.optim.Adam(policy.parameters(),lr=learning_rate1)
 value_optimizer = torch.optim.Adam(value_prediction.parameters(),lr=learning_rate2)
 
@@ -165,9 +171,12 @@ for data in range(episode_number):
 
 writer.close()
 #保存策略网络训练参数
-torch.save(policy, 'Cartpole_net.pth')
+torch.save(policy, 'models/CartPole_PG_Baseline.pkl')
+
 #加载网络
-trained_network = torch.load('Cartpole_net.pth')
+if os.path.exists('models/CartPole_PG_Baseline.pkl'):    
+    trained_network = torch.load('models/CartPole_PG_Baseline.pkl')
+
 #evaluation 1 episode
 state = env.reset()#初始状态：数组形式
 env.render(mode='rgb_array')#显示画面
