@@ -9,12 +9,12 @@ from itertools import count
 import gym
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter(comment='Cartpole Reward Record')
-
+script_name = os.path.basename(__file__)
+directory = './exp' + script_name +'./'
+writer = SummaryWriter(directory,comment='Cartpole Reward Record')
 #用策略梯度方法解决mountain_car问题
 env = gym.make('MountainCar-v0')
-env = env.unwrapped
-#用env.unwrapped可以得到原始的类，原始类想step多久就多久，不会200步后失败：
+env = env.unwrapped#用env.unwrapped可以得到原始的类，原始类想step多久就多久，不会200步后失败：
 env.seed(1)
 learning_rate = 0.02         #学习率
 discount_factor = 0.9       #折扣值
@@ -108,8 +108,6 @@ def learning():
     policy_loss.backward()
     optimizer.step()
 
-
-
 for i in range(episode_number):
     state = env.reset()#初始状态：数组形式
     # env.render(mode='rgb_array')#显示画面
@@ -137,7 +135,6 @@ for i in range(episode_number):
 #绘制曲线
 for data in range(episode_number):
     writer.add_scalar('Reward',episode_durations[data],data)   
-
 writer.close()
 #保存策略网络训练参数
 torch.save(policy, 'models/MountainCar_PG.pkl')
