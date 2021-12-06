@@ -49,7 +49,7 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
 
-directory = './exp' + script_name  +'./'
+directory = './exp' + "Pendulum" +'./'
 writer = SummaryWriter(directory, comment='Env Reward Record')
 class Replay_buffer():
     '''
