@@ -26,19 +26,20 @@ parser.add_argument('--batch_size', default=100, type=int) # mini batch size
 parser.add_argument('--seed', default=False, type=bool)
 parser.add_argument('--random_seed', default=9527, type=int)
 parser.add_argument('--max_length_of_trajectory', default=10000, type=int)
+
 # optional parameters
 parser.add_argument('--render', default=True, type=bool) # show UI or not
 parser.add_argument('--log_interval', default=50, type=int) #每训练50个episode 保存一次网络
 parser.add_argument('--load', default=False, type=bool) # 是否load model
-parser.add_argument('--render_interval', default=100, type=int) # after render_interval, the env.render() will work
+parser.add_argument('--render_interval', default=10, type=int) # after render_interval, the env.render() will work
 parser.add_argument('--exploration_noise', default=0.1, type=float)#噪声
-parser.add_argument('--max_episode', default=10000, type=int) # num of games
+parser.add_argument('--max_episode', default=1000, type=int) # num of games
 parser.add_argument('--update_iteration', default=200, type=int)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 script_name = os.path.basename(__file__)
-env = gym.make("Pendulum-v1")
+env = gym.make("BipedalWalker-v3")
 
 if args.seed:
     env.seed(args.random_seed)
@@ -49,7 +50,7 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
 
-directory = './exp' + "Pendulum" +'./'
+directory = 'runs/exp' + "BipedalWalker-v2" +'./'
 writer = SummaryWriter(directory, comment='Env Reward Record')
 class Replay_buffer():
     '''
@@ -208,7 +209,7 @@ def main():
                 next_state, reward, done, info = env.step(np.float32(action))
                 ep_r += reward
                 env.render()
-                if done or t >= args.max_length_of_trajectory:
+                if (done or t >= args.max_length_of_trajectory):
                     print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t))
                     ep_r = 0
                     break
@@ -232,7 +233,7 @@ def main():
                 agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
                 sum_reward += reward
                 state = next_state
-                if done:
+                if (done or t > args.max_length_of_trajectory):
                     break
                 step += 1
                 total_reward += reward
