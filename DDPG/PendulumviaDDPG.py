@@ -2,7 +2,7 @@ import argparse
 from itertools import count
 import os, sys, random
 import numpy as np
-
+import time
 import gym
 import torch
 import torch.nn as nn
@@ -34,6 +34,7 @@ parser.add_argument('--render_interval', default=100, type=int) # after render_i
 parser.add_argument('--exploration_noise', default=0.1, type=float)#噪声
 parser.add_argument('--max_episode', default=10000, type=int) # num of games
 parser.add_argument('--update_iteration', default=200, type=int)
+parser.add_argument('--sleep_time', default=0.05, type=float)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -49,7 +50,7 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
 
-directory = './exp' + "Pendulum" +'./'
+directory = 'models/' + "Pendulum-v1" + '/'
 writer = SummaryWriter(directory, comment='Env Reward Record')
 class Replay_buffer():
     '''
@@ -157,7 +158,8 @@ class DDPG(object):
 
             # Compute critic loss
             critic_loss = F.mse_loss(current_Q, target_Q)#使用MBGD，根据最小化损失函数来更新价值网络
-            writer.add_scalar('Loss/critic_loss', critic_loss, global_step=self.num_critic_update_iteration)
+            if args.mode == 'train':
+                writer.add_scalar('Loss/critic_loss', critic_loss, global_step=self.num_critic_update_iteration)
             # Optimize the critic
             self.critic_optimizer.zero_grad()
             critic_loss.backward()
@@ -165,7 +167,8 @@ class DDPG(object):
 
             # Compute actor loss
             actor_loss = -self.critic(state, self.actor(state)).mean()#使用行动家预测网络的动作输入给评论家预测网络，得出期望Q更新行动家预测网络
-            writer.add_scalar('Loss/actor_loss', actor_loss, global_step=self.num_actor_update_iteration)
+            if args.mode == 'train':
+                writer.add_scalar('Loss/actor_loss', actor_loss, global_step=self.num_actor_update_iteration)
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
@@ -208,14 +211,17 @@ def main():
                 next_state, reward, done, info = env.step(np.float32(action))
                 ep_r += reward
                 env.render()
+                time.sleep(args.sleep_time)
                 if done or t >= args.max_length_of_trajectory:
-                    print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t))
+                    print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t+1))
                     ep_r = 0
                     break
                 state = next_state
 
     elif args.mode == 'train':
-        if args.load: agent.load()#如果load之前网络，就load
+        if args.load: 
+            agent.load()#如果load之前网络，就load
+            print("successfully loaded")
         total_step = 0
         for i in range(args.max_episode):
             total_reward = 0
@@ -228,7 +234,7 @@ def main():
                     env.action_space.low, env.action_space.high)#剪切最大最小动作输入
 
                 next_state, reward, done, info = env.step(action)
-                if args.render and i >= args.render_interval : env.render()
+                # if args.render and i >= args.render_interval : env.render()
                 agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
                 sum_reward += reward
                 state = next_state

@@ -2,7 +2,7 @@ import argparse
 from itertools import count
 import os, sys, random
 import numpy as np
-
+import time
 import gym
 import torch
 import torch.nn as nn
@@ -28,13 +28,14 @@ parser.add_argument('--random_seed', default=9527, type=int)
 parser.add_argument('--max_length_of_trajectory', default=10000, type=int)
 
 # optional parameters
-parser.add_argument('--render', default=True, type=bool) # show UI or not
+parser.add_argument('--render', default=False, type=bool) # show UI or not
 parser.add_argument('--log_interval', default=50, type=int) #每训练50个episode 保存一次网络
-parser.add_argument('--load', default=False, type=bool) # 是否load model
+parser.add_argument('--load', default=True, type=bool) # 是否load model
 parser.add_argument('--render_interval', default=10, type=int) # after render_interval, the env.render() will work
 parser.add_argument('--exploration_noise', default=0.1, type=float)#噪声
 parser.add_argument('--max_episode', default=1000, type=int) # num of games
 parser.add_argument('--update_iteration', default=200, type=int)
+parser.add_argument('--sleep_time', default=0.05, type=float)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -50,7 +51,7 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
 
-directory = 'runs/exp' + "BipedalWalker-v2" +'./'
+directory = 'models/' + "BipedalWalker-v2" + '/'
 writer = SummaryWriter(directory, comment='Env Reward Record')
 class Replay_buffer():
     '''
@@ -209,6 +210,7 @@ def main():
                 next_state, reward, done, info = env.step(np.float32(action))
                 ep_r += reward
                 env.render()
+                time.sleep(args.sleep_time)
                 if (done or t >= args.max_length_of_trajectory):
                     print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t))
                     ep_r = 0
@@ -216,7 +218,9 @@ def main():
                 state = next_state
 
     elif args.mode == 'train':
-        if args.load: agent.load()#如果load之前网络，就load
+        if args.load: 
+            agent.load()#如果load之前网络，就load
+            print("successfully loaded")
         total_step = 0
         for i in range(args.max_episode):
             total_reward = 0
@@ -229,7 +233,7 @@ def main():
                     env.action_space.low, env.action_space.high)#剪切最大最小动作输入
 
                 next_state, reward, done, info = env.step(action)
-                if args.render and i >= args.render_interval : env.render()
+                # if args.render and i >= args.render_interval : env.render()
                 agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
                 sum_reward += reward
                 state = next_state
