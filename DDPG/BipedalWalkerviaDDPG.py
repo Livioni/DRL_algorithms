@@ -99,7 +99,7 @@ class Actor(nn.Module):#行动家网络
     def forward(self, x):
         x = F.relu(self.l1(x))
         x = F.relu(self.l2(x))
-        x = self.max_action * torch.tanh(self.l3(x))
+        x = self.max_action * torch.tanh(self.l3(x))#确定性动作 DDPG特征
         return x
 
 
@@ -234,7 +234,7 @@ def main():
 
                 next_state, reward, done, info = env.step(action)
                 # if args.render and i >= args.render_interval : env.render()
-                agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
+                agent.replay_buffer.push((state, next_state, action, reward, done))
                 sum_reward += reward
                 state = next_state
                 if (done or t > args.max_length_of_trajectory):

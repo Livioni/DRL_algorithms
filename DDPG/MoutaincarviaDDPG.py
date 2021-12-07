@@ -234,7 +234,7 @@ def main():
 
                 next_state, reward, done, info = env.step(action)
                 # if args.render and i >= args.render_interval : env.render()
-                agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
+                agent.replay_buffer.push((state, next_state, action, reward, done))
                 sum_reward += reward
                 state = next_state
                 if (done or t > args.max_length_of_trajectory):
