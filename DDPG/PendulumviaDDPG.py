@@ -33,7 +33,7 @@ parser.add_argument('--load', default=False, type=bool) # 是否load model
 parser.add_argument('--render_interval', default=100, type=int) # after render_interval, the env.render() will work
 parser.add_argument('--exploration_noise', default=0.1, type=float)#噪声
 parser.add_argument('--max_episode', default=10000, type=int) # num of games
-parser.add_argument('--update_iteration', default=200, type=int)
+parser.add_argument('--update_iteration', default=20, type=int)
 parser.add_argument('--sleep_time', default=0.05, type=float)
 args = parser.parse_args()
 
@@ -213,7 +213,7 @@ def main():
                 env.render()
                 time.sleep(args.sleep_time)
                 if done or t >= args.max_length_of_trajectory:
-                    print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t+1))
+                    print("Ep_i \t{}, the sum reward is \t{:0.2f}, the step is \t{}".format(i, ep_r, t+1))
                     ep_r = 0
                     break
                 state = next_state

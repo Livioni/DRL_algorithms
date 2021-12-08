@@ -34,7 +34,7 @@ parser.add_argument('--load', default=False, type=bool) # 是否load model
 parser.add_argument('--render_interval', default=100, type=int) # after render_interval, the env.render() will work
 parser.add_argument('--exploration_noise', default=0.1, type=float)#噪声
 parser.add_argument('--max_episode', default=1000, type=int) # num of games
-parser.add_argument('--update_iteration', default=200, type=int)
+parser.add_argument('--update_iteration', default=20, type=int)
 parser.add_argument('--sleep_time', default=0.05, type=float)
 args = parser.parse_args()
 
