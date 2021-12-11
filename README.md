@@ -6,13 +6,11 @@
 
 这里的目标函数是指在该策略下所取得的（状态，动作）价值函数期望。
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211101353371.png" alt="image-20211211101353371" style="zoom:20%;" />
+<img src="readme.assets/image-20211211101353371.png" alt="image-20211211101353371" style="zoom:20%;" />
 
 为了使这个目标函数最大化，需要做Gradient Ascent，即求出梯度，
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211101625686.png" alt="image-20211211101625686" style="zoom:20%;" />
-
-
+<img src="readme.assets/image-20211211101625686.png" alt="image-20211211101625686" style="zoom:20%;" />
 
 ### REINFORCE
 
@@ -20,13 +18,13 @@
 
 REINFORCE可以work是因为sample gradient的期望和真实的gradient一样。
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211100223043.png" alt="image-20211211100223043" style="zoom:20%;" />
+<img src="readme.assets/image-20211211100223043.png" alt="image-20211211100223043" style="zoom:20%;" />
 
 我们可以通过采样的轨迹来获得![[公式]](https://www.zhihu.com/equation?tex=G_t)（即discounted reward的和，可见前面的变量定义表)。由于一次更新需要一个完整的trajectory，REINFORCE被称为Monte-Carlo方法。
 
 REINFORCE里的梯度更新公式：
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211100310609.png" alt="image-20211211100310609" style="zoom:20%;" />
+<img src="readme.assets/image-20211211100310609.png" alt="image-20211211100310609" style="zoom:20%;" />
 
 伪代码如下：
 
@@ -113,7 +111,7 @@ policy = Policy()
 
 ​				根据输出动作的概率评分值（这里还不是概率）进行Softmax操作，使得选择动作的概率之和为1.
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211104050387.png" alt="image-20211211104050387" style="zoom:20%;" />
+<img src="readme.assets/image-20211211104050387.png" alt="image-20211211104050387" style="zoom:20%;" />
 
 ​				之后通过Categorical()函数构造概率分布，通过sample()函数进行动作采样。
 
@@ -129,7 +127,7 @@ def action_select(state,network):
 
 2. 对于连续动作空间，我们不直接计算每个动作的概率，而是学习动作的概率分布，例如根据正态分布选择动作,正太分布的概率密度函数可以写为：
 
-   <img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211104610639.png" alt="image-20211211104610639" style="zoom:20%;" />
+   <img src="readme.assets/image-20211211104610639.png" alt="image-20211211104610639" style="zoom:20%;" />
 
    $\mu$和$\sigma$是我们需要的两个参数，因此完全可以使用网络来近似这两个参数，然后构造成正态分布的形式，然后再采样一个动作，此时的策略网络这样写：
 
@@ -171,7 +169,7 @@ def action_select(state,network):
 
 经过证明得到带有Baseline的更新公式：
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211105338700.png" alt="image-20211211105338700" style="zoom:20%;" />
+<img src="readme.assets/image-20211211105338700.png" alt="image-20211211105338700" style="zoom:20%;" />
 
 在累计回报中减去这个基线不会使更新值的期望发生变化。在实现中，我们可以使用另外一个神经网络近似的值函数来作为基线，在代码上体现在计算累计收益上：
 
@@ -202,9 +200,9 @@ AC算法的流程可以表述为：
 
 AC算法里的优势函数类似于PG算法里的累计回报，Actor的目标是最大化优势函数，根据基线的思想，将状态$s$的价值$v_\pi(s)$作为基线$b(s)$，定义优势函数$A_{\pi_\theta}$：
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211112227142.png" alt="image-20211211112227142" style="zoom:20%;" />
+<img src="readme.assets/image-20211211112227142.png" alt="image-20211211112227142" style="zoom:20%;" />
 
-<img src="/Users/livion/Documents/GitHub/DRL_algorithms/readme.assets/image-20211211112313169.png" alt="image-20211211112313169" style="zoom:20%;" />
+<img src="readme.assets/image-20211211112313169.png" alt="image-20211211112313169" style="zoom:20%;" />
 
 利用优势函数可以减小策略梯度的方差，一般采样TD误差代替$q_{\pi_\theta}(s,a)$:
 
