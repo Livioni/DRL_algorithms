@@ -28,7 +28,7 @@ REINFORCE里的梯度更新公式：
 
 伪代码如下：
 
-![截屏2021-11-19 16.15.47](/Users/livion/Library/Application Support/typora-user-images/截屏2021-11-19 16.15.47.png)
+![截屏2021-11-19 16.15.47](readme.assets/%E6%88%AA%E5%B1%8F2021-11-19%2016.15.47.png)
 
 #### 实现
 
