@@ -1,3 +1,7 @@
+# DRL Algorithms
+
+## DQN (deep Q network)
+
 ## Policiy_Gradient
 
 策略梯度是强化学习的一类方法，大致的原理是使用神经网络构造一个策略网络，输入是状态，输出为动作的概率，在这些动作里采样选择一个动作去与环境交互，这样可以起到**Exploration 和 Exploitation的tradeoff**。与环境交互后获得一个收益，根据设计的损失函数和收益使用梯度上升法更新网络参数。输出的直接是策略$\pi(a|s)$，以概率的形式呈现，且$\sum_{a} \pi(a \mid s)=1$。
@@ -125,7 +129,7 @@ def action_select(state,network):
     return action.item()
 ```
 
-2. 对于连续动作空间，我们不直接计算每个动作的概率，而是学习动作的概率分布，例如根据正态分布选择动作,正太分布的概率密度函数可以写为：
+2. 对于连续动作空间，我们不直接计算每个动作的概率，而是学习动作的概率分布，例如根据正态分布选择动作,正态分布的概率密度函数可以写为：
 
    <img src="readme.assets/image-20211211104610639.png" alt="image-20211211104610639" style="zoom:20%;" />
 
@@ -210,6 +214,8 @@ AC算法里的优势函数类似于PG算法里的累计回报，Actor的目标�
 
 于是目标函数变为：<img src="readme.assets/image-20211211113459960.png" alt="image-20211211113459960" style="zoom:20%;" />
 
+### 实现
+
 伪代码如下：
 
 <img src="readme.assets/截屏2021-12-11 11.29.58.png" alt="截屏2021-12-11 11.29.58" style="zoom:50%;" />
@@ -241,3 +247,266 @@ def leaning(self,state,next_state,done,reward,log_prob):
 ```
 
 ## Deep Deterministic Policy Gradient (DDPG)
+
+DDPG（深度确定性策略梯度算法）一般用于连续动作的强化学习任务中，该算法基于深度神经网络表达确定性策略$\mu(s)$，采用确定性策略梯度来更新网络参数。 确定性策略与随机策略相比，策略网络输出的动作是固定的，不需要采样操作，为了实现Exploration 和 Exploitation的tradeoff，加入随机噪声影响动作的选择，一般为高斯噪声。
+
+DDPG主要有三点改进方法：
+
+1. 采用深度神经网络：构建基于深度神经网络的策略网络和价值网络，并用随机梯度下降训练网络。
+
+2. 引入经验回放机制：Agent与环境产生的交互信息（状态，动作，下一个状态，回报）存储在经验池中，通过引入经验回放机制，减少值函数估计所产生的误差，解决数据间相关性及非静态分布问题，使算法收敛加速。
+
+3. 采用双网络架构，策略函数和价值函数均使用双网络架构，使肃反啊的学习过程更加稳定快速。
+
+   
+
+Critic网络和AC算法相似，只不过输入为（状态+动作），输出为Q值。Actor网络与动作选择稍微又有些变化，Actor网络输入的是状态向量，输出的是一个动作
+
+```python
+class Actor(nn.Module):#行动家网络
+    def __init__(self, state_dim, action_dim, max_action):
+        super(Actor, self).__init__()
+
+        self.l1 = nn.Linear(state_dim, 400)
+        self.l2 = nn.Linear(400, 300)
+        self.l3 = nn.Linear(300, action_dim)
+
+        self.max_action = max_action
+
+    def forward(self, x):
+        x = F.relu(self.l1(x))
+        x = F.relu(self.l2(x))
+        x = self.max_action * torch.tanh(self.l3(x))#最大动作，tanh输出在[-1,1]之间
+        return x
+```
+
+注意在动作的选择上使用的是预测Actor网络。
+
+```python
+def select_action(self, state):
+    state = torch.FloatTensor(state.reshape(1, -1)).to(device)
+    return self.actor(state).cpu().data.numpy().flatten()#用预测网络更新的动作
+```
+
+在训练的时候，与环境交互时加入高斯噪声影响动作的选择：
+
+```python
+action = agent.select_action(state)#探索动作输入
+action = (action + np.random.normal(0, args.exploration_noise, size=env.action_space.shape[0])).clip(
+                    env.action_space.low, env.action_space.high)#剪切最大最小动作输入
+```
+
+### 经验回放
+
+在交互中的每一步状态转移都记录在经验池中，在训练过程中，每一幕完成后，从经验池中选取一定的batch size利用小批量梯度上升方法更新网络参数。经验池有一定的容量，类似于FIFO的操作。
+
+```python
+class Replay_buffer():
+    '''
+    Code based on:
+  https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
+    Expects tuples of (state, next_state, action, reward, done)
+    '''
+    def __init__(self, max_size=args.capacity):#经验回放池最大容量
+        self.storage = []
+        self.max_size = max_size
+        self.ptr = 0
+
+    def push(self, data):#压入经验回放池
+        if len(self.storage) == self.max_size:#如果经验池满了，把最开始的经验挤掉
+            self.storage[int(self.ptr)] = data
+            self.ptr = (self.ptr + 1) % self.max_size
+        else:
+            self.storage.append(data)
+
+    def sample(self, batch_size):#采样batch_size个轨迹
+        ind = np.random.randint(0, len(self.storage), size=batch_size)#在整个经验池里随机采样
+        x, y, u, r, d = [], [], [], [], []
+
+        for i in ind:
+            X, Y, U, R, D = self.storage[i]
+            x.append(np.array(X, copy=False))#state
+            y.append(np.array(Y, copy=False))#next_action
+            u.append(np.array(U, copy=False))#action
+            r.append(np.array(R, copy=False))#reward
+            d.append(np.array(D, copy=False))#done
+
+        return np.array(x), np.array(y), np.array(u), np.array(r).reshape(-1, 1), np.array(d).reshape(-1, 1)
+```
+
+### 软更新操作
+
+由于DDPG有目标网络和预测网络两套网络，在更新过程中是通过MBGD更新的预测网络，然后采用软更新的方法，目标网络参数会在一定程度上靠近预测网络。
+
+<img src="readme.assets/image-20211211160105601.png" alt="image-20211211160105601" style="zoom:20%;" />
+
+采用软更新方法，目标值会一直缓慢的向当前估算值靠近，既保证了网络参数的及时更新，又保证了训练时间预测网络梯度的相对稳定，使算法更容易收敛。其缺点是每次更新参数变化很小，学习时间过长。
+
+### 实现
+
+<img src="readme.assets/code1.png" alt="code1" style="zoom: 67%;" />
+
+算法执行流程：
+
+1. 初始化Actor($Q(s,a|\theta^Q)$)和Critic($\mu(s|\theta^\mu)$的网络，称为预测网络，copy初始化的网络给target Actor($Q^\prime$)和Critic($\mu^\prime$)的网络，称为目标网络；
+
+2. 初始化经验池；
+
+3. 在每一幕中：
+
+   1. 用预测actor网络选取动作，加入高斯噪声影响动作选择；
+
+   2. 将每一步的交互数据（状态，下一个状态，动作，收益，是否完成一幕）记录在经验池中；
+
+   3. 重复以上过程完成一幕。
+
+   4. 更新N次网络参数：
+
+      1. 从经验池中随机采样小批量的n个经验转移样本，用critic目标网络计算目标值：$y_{i}=r_{i}+\gamma Q^{\prime}\left(s_{i+1}, \mu^{\prime}\left(s_{i+1} \mid \theta^{\mu^{\prime}}\right) \mid \theta^{Q^{\prime}}\right)$
+
+         ```python
+         target_Q = self.critic_target(next_state, self.actor_target(next_state))#这里的target_Q是用目标网络更新的
+         target_Q = reward + (done * args.gamma * target_Q).detach()#最后一幕收益为0 detach分离向量不计算梯度
+         ```
+
+      2. 用ctiric预测网络计算当前的q值
+
+         `current_Q = self.critic(state, action)#计算预测评论家网络q值`
+
+      3. 使用MBGD，根据最小化损失函数来更新预测critic网络$L=\frac{1}{N} \sum_{i}\left(y_{i}-Q\left(s_{i}, a_{i} \mid \theta^{Q}\right)\right)^{2}$；
+
+         ` critic_loss = F.mse_loss(current_Q, target_Q)`
+
+      4. 使用MBGA，根据最大化目标函数来更新actor预测网络（注意代码上要加负号）$\left.\left.\nabla_{\theta^{\mu}} J \approx \frac{1}{N} \sum_{i} \nabla_{a} Q\left(s, a \mid \theta^{Q}\right)\right|_{s=s_{i}, a=\mu\left(s_{i}\right)} \nabla_{\theta^{\mu}} \mu\left(s \mid \theta^{\mu}\right)\right|_{s_{i}}$；
+
+         `actor_loss = -self.critic(state, self.actor(state)).mean()`
+
+      5. 软更新目标网络的参数：
+
+<img src="readme.assets/image-20211211160105601.png" alt="image-20211211160105601" style="zoom:20%;" />
+
+[## TD3 （双延迟-确定性策略梯度）](https://blog.csdn.net/weixin_45492196/article/details/107866309)
+
+TD3算法是一个对DDPG优化的版本，即TD3也是一种基于AC架构的面向连续动作空间的DRL算法，主要包括三个非常主要的优化。
+
+### Double Network
+
+DDPG源于DQN，是DQN解决连续控制问题的一种方法。然而**DQN存在过估计问题**
+
+在TD3中，使用 **两套网络(Twin)** 表示不同的Q值，通过选取**最小**的那个作为我们更新的目标（Target Q Value），抑制持续地过高估计。 ——TD3的基本思路
+
+> 1. 什么是过估计？
+>
+>    过估计是指估计的值函数比真实的值函数大。
+>
+> 2. 为什么DQN存在过估计的问题?
+>
+>    因为DQN是一种off-policy的方法，每次学习时，不是使用下一次交互的真实动作，而是使用当前认为价值最大的动作来更新目标值函数，所以会出现对Q值的过高估计。通过基于函数逼近方法的值函数更新公式可以看出：
+>
+>    <img src="readme.assets/image-20211212101002771.png" alt="image-20211212101002771" style="zoom:20%;" />
+>
+> 3. 怎么解决这个问题？
+>
+>    所谓的Double Q Learning是将**动作的选择**和**动作的评估**分别用不同的值函数来实现。
+
+### 延迟更新Actor网络
+
+> 想象一下，原本是最高点，当Actor好不容易到达最高点，Q值更新了，这里并不是最高点了。这是Actor只能转头再继续寻找新的最高点；更坏的情况是Actor被困在次高点，没能找到正确的最高点。
+>
+> - 如果Q能稳定下来再学习policy，应该就会减少一些错误的更新；所以，我们可以把Critic的更新频率，调的比Actor要高一点。让critic更加确定，actor再行动。
+
+### 实现
+
+<img src="readme.assets/TD3.png" style="zoom:67%;" />
+
+算法执行流程：
+
+1. 初始化双评论家网络$Q_{\theta_1},Q_{\theta_2}$，和行动家网络$\pi_\phi$
+
+2. 复制以上三个网络称为目标网络$Q_{\theta_1^\prime},Q_{\theta_2^\prime},\pi_{\phi^\prime}$
+
+3. 初始化经验池
+
+4. 在每一幕中：
+
+   1. 用预测actor网络选取动作，加入高斯噪声影响动作选择；
+
+      ```python
+      action = agent.select_action(state)                                                             #这里的action是通过行动家网络的出来的
+      action = action + np.random.normal(0, args.exploration_noise, size=env.action_space.shape[0])   #添加高斯噪声
+      action = action.clip(env.action_space.low, env.action_space.high)                               #截断动作区间 
+      ```
+
+   2. 将一步的交互数据保存到经验池中；
+
+   3. （可以多次循环）从经验池中采样mini-batch个状态转移数据（状态，动作，回报，下一个状态）；
+
+      1. 根据目标行动家网络对batch中每一步数据构造下一个动作：
+
+         注意行动家使用的是目标actor网络，添加高斯噪声，最后上下截断输出动作。**这里伪代码中截断的是噪声**：
+
+          <img src="readme.assets/image-20211212102409672.png" alt="image-20211212102409672" style="zoom:20%;" />
+
+         ```python
+         #Select next action according to target policy:
+         noise = torch.ones_like(action).data.normal_(0, args.policy_noise).to(device) #构造action的噪声
+         noise = noise.clamp(-args.noise_clip, args.noise_clip)              #根据上下限截断noise
+         next_action = (self.actor_target(next_state) + noise)               #下一次行动就等于目标行动家网络输出的动作+噪声动作
+         next_action = next_action.clamp(-self.max_action, self.max_action)  #根据动作输出上下限截断动作
+         ```
+
+      2.  根据上一步得到的下一个动作和经验池中的下一个状态，通过双Critic目标网络预测Q值，取这两个结果中的最小值，再计算TD-target：
+
+         <img src="readme.assets/image-20211212103031913.png" alt="image-20211212103031913" style="zoom:20%;" />
+
+         ```python
+         target_Q1 = self.critic_1_target(next_state, next_action)           #通过目标评论家1网络计算q值
+         target_Q2 = self.critic_2_target(next_state, next_action)           #通过目标评论家2网络计算q值
+         target_Q = torch.min(target_Q1, target_Q2)                          #取最小的一个Q值
+         target_Q = reward + ((1 - done) * args.gamma * target_Q).detach()   #计算target值
+         ```
+
+      3. 通过Critic网络计算当前状态的Q值，并更新Critic网络
+
+         ```python
+         current_Q1 = self.critic_1(state, action)
+         current_Q2 = self.critic_2(state, action)
+         loss_Q1 = F.mse_loss(current_Q1, target_Q)
+         loss_Q2 = F.mse_loss(current_Q2, target_Q)
+         self.critic_1_optimizer.zero_grad()
+         self.critic_2_optimizer.zero_grad()
+         loss_Q1.backward()
+         loss_Q2.backward()
+         self.critic_1_optimizer.step()
+         self.critic_2_optimizer.step()
+         ```
+
+      4. 延迟更新策略，在一幕中每隔d步：
+
+         1. 通过actor网络选择的下一个动作和当前状态，输入critic1网络得出Q值，进行梯度上升，更新actor策略
+
+            <img src="readme.assets/image-20211212103733541.png" alt="image-20211212103733541" style="zoom:20%;" />
+
+            ```python
+            actor_loss = - self.critic_1(state, self.actor(state)).mean()   #论文伪代码确实是这样写的
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+            ```
+
+         2. 软更新3个目标网络
+
+            <img src="readme.assets/image-20211212103907524.png" alt="image-20211212103907524" style="zoom:20%;" />
+
+            ```python
+            for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
+            		target_param.data.copy_(((1- args.tau) * target_param.data) + args.tau * param.data)
+            for param, target_param in zip(self.critic_1.parameters(), self.critic_1_target.parameters()):
+            		target_param.data.copy_(((1 - args.tau) * target_param.data) + args.tau * param.data)
+            for param, target_param in zip(self.critic_2.parameters(), self.critic_2_target.parameters()):
+            		target_param.data.copy_(((1 - args.tau) * target_param.data) + args.tau * param.data
+            
+            ```
+
+## PPO (proximal policy optimization)
+
