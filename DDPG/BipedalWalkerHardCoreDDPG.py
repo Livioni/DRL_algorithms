@@ -150,8 +150,9 @@ class DDPG(object):
             done = torch.FloatTensor(1-d).to(device)#1表示没done 0表示done
             reward = torch.FloatTensor(r).to(device)
 
+            target_action = self.actor_target(next_state)
             # Compute the target Q value
-            target_Q = self.critic_target(next_state, self.actor_target(next_state))#这里的target_Q是用目标网络更新的
+            target_Q = self.critic_target(next_state, target_action)#这里的target_Q是用目标网络更新的
             target_Q = reward + (done * args.gamma * target_Q).detach()#最后一幕收益为0 detach分离向量不计算梯度
 
             # Get current Q estimate

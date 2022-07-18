@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
-# from torch.utils.tensorboard import SummaryWriter
-# writer = SummaryWriter(comment='Cartpole Reward Record')
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter(comment='Cartpole Reward Record')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make("CartPole-v0")
@@ -68,6 +68,7 @@ def trainIters(actor, critic, n_iters):
         values = []
         rewards = []
         masks = []
+        sum_reward = 0
         env.reset()
 
         for i in count():
@@ -86,10 +87,11 @@ def trainIters(actor, critic, n_iters):
             masks.append(torch.tensor([1-done], dtype=torch.float, device=device))
 
             state = next_state
-
+            sum_reward += reward
             if done:
                 episode_durations.append(i + 1)
                 print('Iteration: {}, Score: {}'.format(iter, i + 1))
+                writer.add_scalar('Sum_reward', sum_reward, global_step=iter+1)
                 break
 
 
@@ -104,7 +106,11 @@ def trainIters(actor, critic, n_iters):
         advantage = returns - values
 
         actor_loss = -(log_probs * advantage.detach()).mean()#这个使用REINFORCE
+        writer.add_scalar('Loss/actor_loss', actor_loss, global_step=iter+1)
+
         critic_loss = advantage.pow(2).mean()
+        writer.add_scalar('Loss/critic_loss', critic_loss, global_step=iter+1)
+
 
         optimizerA.zero_grad()
         optimizerC.zero_grad()
@@ -132,6 +138,6 @@ if __name__ == '__main__':
     trainIters(actor, critic, n_iters=1000)
 
 #绘制曲线
-# for data in range(episode_number):
-#     writer.add_scalar('Reward',episode_durations[data],data)   
-# writer.close()
+for data in range(episode_number):
+    writer.add_scalar('Reward',episode_durations[data],data)   
+writer.close()
